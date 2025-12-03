@@ -190,9 +190,11 @@ async function startBot() {
         markOnlineOnConnect: false
     })
 
-    sock.ev.on('connection.update', (update) => {
+    // UBAH 1: Tambahkan 'async' sebelum (update)
+    sock.ev.on('connection.update', async (update) => {
         const { connection, lastDisconnect, qr } = update
         if (qr) qrcode.generate(qr, { small: true })
+        
         if (connection === 'close') {
             let reason = new Boom(lastDisconnect?.error)?.output.statusCode
             if (reason === DisconnectReason.badSession) {
@@ -200,7 +202,13 @@ async function startBot() {
                 if (fs.existsSync(sessionName)) fs.rmSync(sessionName, { recursive: true, force: true });
                 process.exit();
             } else startBot()
-        } else if (connection === 'open') console.log('✅ Bot Online!')
+        } else if (connection === 'open') {
+            console.log('✅ Bot Online!')
+            
+            // UBAH 2: Paksa status jadi Offline/Unavailable
+            // Bot akan tetap bisa balas chat, tapi status profil tidak "Online" terus.
+            await sock.sendPresenceUpdate('unavailable') 
+        }
     })
     
     sock.ev.on('creds.update', saveCreds)
