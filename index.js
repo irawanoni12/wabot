@@ -248,6 +248,23 @@ async function startBot() {
             // Ganti ownerNumber diatas dengan nomor Anda agar ini bekerja
             const isCreator = m.sender === ownerNumber || m.key.fromMe
 
+            // --- INFO BOT (.ping) ---
+            if (command === 'ping') {
+                // 1. Hitung Kecepatan Respon (Internal Server Speed)
+                const start = process.hrtime()
+                
+                // (Simulasi proses kecil)
+                const end = process.hrtime(start)
+                const ping = (end[0] * 1000 + end[1] / 1e6).toFixed(2)
+
+                // 2. Hitung Uptime (Berapa lama bot nyala)
+                const uptime = runtime(process.uptime())
+
+                // 3. Kirim Pesan
+                const caption = `Ping : ${ping} ms\nUptime : ${uptime}\nOwner : serpagengs`
+                reply(caption)
+            }
+
             // =======================================================
             //             FITUR OWNER (RESTART & UPDATE)
             // =======================================================
@@ -364,6 +381,20 @@ async function startBot() {
 
         } catch (err) { console.log("Error Handler:", err) }
     })
+}
+
+// --- HELPER FORMAT WAKTU (UPTIME) ---
+function runtime(seconds) {
+    seconds = Number(seconds)
+    var d = Math.floor(seconds / (3600 * 24))
+    var h = Math.floor(seconds % (3600 * 24) / 3600)
+    var m = Math.floor(seconds % 3600 / 60)
+    var s = Math.floor(seconds % 60)
+    var dDisplay = d > 0 ? d + "d " : ""
+    var hDisplay = h > 0 ? h + "h " : ""
+    var mDisplay = m > 0 ? m + "m " : ""
+    var sDisplay = s > 0 ? s + "s" : ""
+    return dDisplay + hDisplay + mDisplay + sDisplay
 }
 
 startBot()
