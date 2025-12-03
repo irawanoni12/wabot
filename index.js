@@ -250,21 +250,35 @@ async function startBot() {
 
             // --- INFO BOT (.ping) ---
             if (command === 'ping') {
-                // 1. Hitung Kecepatan Respon (Internal Server Speed)
-                const start = process.hrtime()
-                
-                // (Simulasi proses kecil)
-                const end = process.hrtime(start)
-                const ping = (end[0] * 1000 + end[1] / 1e6).toFixed(2)
+                // Import modul OS untuk cek RAM (Bawaan Node.js)
+                const os = require('os')
 
-                // 2. Hitung Uptime (Berapa lama bot nyala)
+                // 1. Hitung Kecepatan Real (Timestamp Pesan vs Waktu Sekarang)
+                // m.messageTimestamp satuannya detik, kita kali 1000 biar jadi milidetik
+                const timestamp = m.messageTimestamp * 1000 
+                const now = Date.now()
+                const latensi = (now - timestamp)
+                
+                // Jika hasilnya negatif (karena jam server beda), kita absolutkan
+                const finalPing = Math.abs(latensi).toFixed(2)
+
+                // 2. Hitung Uptime
                 const uptime = runtime(process.uptime())
 
-                // 3. Kirim Pesan
-                const caption = `Ping : ${ping} ms\nUptime : ${uptime}\nOwner : serpagengs`
+                // 3. Info VPS (Opsional, biar kelihatan spek servernya)
+                const totalMem = (os.totalmem() / 1024 / 1024).toFixed(0) // MB
+                const freeMem = (os.freemem() / 1024 / 1024).toFixed(0) // MB
+
+                // 4. Kirim Pesan
+                const caption = `🚀 *SPEED TEST*\n\n` +
+                                `📶 *Ping:* ${finalPing} ms\n` +
+                                `⏳ *Uptime:* ${uptime}\n` +
+                                `💻 *RAM:* ${freeMem}MB / ${totalMem}MB\n` +
+                                `👑 *Owner:* serpagengs`
+                
                 reply(caption)
             }
-
+            
             // =======================================================
             //             FITUR OWNER (RESTART & UPDATE)
             // =======================================================
