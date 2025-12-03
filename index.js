@@ -185,7 +185,7 @@ async function startBot() {
         logger: pino({ level: 'silent' }),
         printQRInTerminal: false,
         auth: state,
-        browser: ['PC', 'Chrome', '20.0.04'],
+        browser: ['PC', 'Chrome', '1.0.0'],
         generateHighQualityLinkPreview: true,
         markOnlineOnConnect: false
     })
