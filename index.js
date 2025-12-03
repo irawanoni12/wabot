@@ -270,11 +270,11 @@ async function startBot() {
                 const freeMem = (os.freemem() / 1024 / 1024).toFixed(0) // MB
 
                 // 4. Kirim Pesan
-                const caption = `🚀 *SPEED TEST*\n\n` +
-                                `📶 *Ping:* ${finalPing} ms\n` +
-                                `⏳ *Uptime:* ${uptime}\n` +
-                                `💻 *RAM:* ${freeMem}MB / ${totalMem}MB\n` +
-                                `👑 *Owner:* serpagengs`
+                const caption = ` *PONG*\n\n` +
+                                ` *Ping:* ${finalPing} ms\n` +
+                                ` *Uptime:* ${uptime}\n` +
+                                ` *RAM:* ${freeMem}MB / ${totalMem}MB\n` +
+                                ` *Owner:* serpagengs`
                 
                 reply(caption)
             }
@@ -285,8 +285,8 @@ async function startBot() {
             
             // --- 1. RESTART PM2 (.restart) ---
             if (command === 'restart') {
-                if (!isCreator) return reply("❌ Fitur khusus Owner!")
-                reply("🔄 Merestart sistem...")
+                if (!isCreator) return reply("Fitur khusus Owner!")
+                reply("Merestart sistem...")
                 
                 // Memberi jeda 1 detik agar pesan "Merestart" terkirim dulu
                 setTimeout(() => {
@@ -298,14 +298,14 @@ async function startBot() {
 
             // --- 2. GIT PULL / UPDATE (.update) ---
             if (command === 'update' || command === 'gitpull') {
-                if (!isCreator) return reply("❌ Fitur khusus Owner!")
+                if (!isCreator) return reply(" Fitur khusus Owner!")
                 
                 await sock.sendMessage(m.key.remoteJid, { react: { text: '⏳', key: m.key } })
                 
                 // Jalankan perintah git pull di terminal VPS
                 exec('git pull', (err, stdout, stderr) => {
-                    if (err) return reply(`❌ Gagal Update:\n${err}`)
-                    if (stdout) reply(`✅ *Output Git:*\n${stdout}\n\n_Silakan ketik .restart untuk menerapkan update._`)
+                    if (err) return reply(` Gagal Update:\n${err}`)
+                    if (stdout) reply(` *Output Git:*\n${stdout}\n\n_Silakan ketik .restart untuk menerapkan update._`)
                 })
             }
 
