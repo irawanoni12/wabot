@@ -108,7 +108,7 @@ async function createMeme(imageBuffer, text, position = 'bawah') {
              else if (baseline === 'bottom') currentY -= (lines.length - 1) * lineHeight;
         }
         for (let line of lines) {
-            ctx.strokeText(line, x, currentY); ctx.fillText(line, x, currentY);   
+            ctx.strokeText(line, x, currentY); ctx.fillText(line, x, currentY);    
             currentY += lineHeight;
         }
     }
@@ -156,12 +156,17 @@ const bufferToSticker = async (buffer, isVideo) => {
         const randInput = getRandom(isVideo ? '.mp4' : '.jpg')
         const randOutput = getRandom('.webp')
         fs.writeFileSync(randInput, buffer)
-        // Set resolusi ke 512x512 agar HD
+        
+        // PERBAIKAN DI SINI: Memperbaiki syntax filter scale yang typo (min'(512) menjadi min(512))
         let ffmpegRules = [
             "-vcodec", "libwebp",
-            "-vf", "scale='min(512,iw)':min'(512,ih)':force_original_aspect_ratio=decrease,fps=15, pad=512:512:-1:-1:color=white@0.0, split [a][b]; [a] palettegen=reserve_transparent=on:transparency_color=ffffff [p]; [b][p] paletteuse"
+            "-vf", "scale='min(512,iw)':min(512,ih):force_original_aspect_ratio=decrease,fps=15, pad=512:512:-1:-1:color=white@0.0, split [a][b]; [a] palettegen=reserve_transparent=on:transparency_color=ffffff [p]; [b][p] paletteuse"
         ]
-        if (isVideo) ffmpegRules.push("-loop", "0", "-ss", "00:00:00", "-t", "00:00:08", "-preset", "default", "-an", "-vsync", "0", "-q:v", "60")
+        
+        // Memastikan flag video diterapkan dengan benar untuk animasi
+        if (isVideo) {
+            ffmpegRules.push("-loop", "0", "-ss", "00:00:00", "-t", "00:00:08", "-preset", "default", "-an", "-vsync", "0")
+        }
         
         ffmpeg(randInput).input(randInput).on('error', (err) => {
             if (fs.existsSync(randInput)) fs.unlinkSync(randInput)
@@ -190,7 +195,6 @@ async function startBot() {
         markOnlineOnConnect: false
     })
 
-    // UBAH 1: Tambahkan 'async' sebelum (update)
     sock.ev.on('connection.update', async (update) => {
         const { connection, lastDisconnect, qr } = update
         if (qr) qrcode.generate(qr, { small: true })
@@ -204,9 +208,6 @@ async function startBot() {
             } else startBot()
         } else if (connection === 'open') {
             console.log('✅ Bot Online!')
-            
-            // UBAH 2: Paksa status jadi Offline/Unavailable
-            // Bot akan tetap bisa balas chat, tapi status profil tidak "Online" terus.
             await sock.sendPresenceUpdate('unavailable') 
         }
     })
@@ -244,54 +245,31 @@ async function startBot() {
             const text = args.join(" ")
             const reply = (text) => sock.sendMessage(m.key.remoteJid, { text: String(text) }, { quoted: m })
 
-            // Cek apakah pengirim adalah OWNER
-            // Ganti ownerNumber diatas dengan nomor Anda agar ini bekerja
             const isCreator = m.sender === ownerNumber || m.key.fromMe
 
             // --- INFO BOT (.ping) ---
             if (command === 'ping') {
-                // Import modul OS untuk cek RAM (Bawaan Node.js)
                 const os = require('os')
-
-                // 1. Hitung Kecepatan Real (Timestamp Pesan vs Waktu Sekarang)
-                // m.messageTimestamp satuannya detik, kita kali 1000 biar jadi milidetik
                 const timestamp = m.messageTimestamp * 1000 
                 const now = Date.now()
                 const latensi = (now - timestamp)
-                
-                // Jika hasilnya negatif (karena jam server beda), kita absolutkan
                 const finalPing = Math.abs(latensi).toFixed(2)
-
-                // 2. Hitung Uptime
                 const uptime = runtime(process.uptime())
-
-                // 3. Info VPS (Opsional, biar kelihatan spek servernya)
                 const totalMem = (os.totalmem() / 1024 / 1024).toFixed(0) // MB
                 const freeMem = (os.freemem() / 1024 / 1024).toFixed(0) // MB
-
-                // 4. Kirim Pesan
                 const caption = ` *PONG*\n\n` +
                                 ` *Ping:* ${finalPing} ms\n` +
                                 ` *Uptime:* ${uptime}\n` +
                                 ` *RAM:* ${freeMem}MB / ${totalMem}MB\n` +
                                 ` *Owner:* serpagengs`
-                
                 reply(caption)
             }
-            
-            // =======================================================
-            //             FITUR OWNER (RESTART & UPDATE)
-            // =======================================================
             
             // --- 1. RESTART PM2 (.restart) ---
             if (command === 'restart') {
                 if (!isCreator) return reply("Fitur khusus Owner!")
                 reply("Merestart sistem...")
-                
-                // Memberi jeda 1 detik agar pesan "Merestart" terkirim dulu
                 setTimeout(() => {
-                    // process.exit() akan mematikan bot. 
-                    // Karena Anda pakai PM2, PM2 akan mendeteksi bot mati dan menghidupkannya lagi otomatis.
                     process.exit() 
                 }, 1000)
             }
@@ -299,19 +277,14 @@ async function startBot() {
             // --- 2. GIT PULL / UPDATE (.update) ---
             if (command === 'update' || command === 'gitpull') {
                 if (!isCreator) return reply(" Fitur khusus Owner!")
-                
                 await sock.sendMessage(m.key.remoteJid, { react: { text: '⏳', key: m.key } })
-                
-                // Jalankan perintah git pull di terminal VPS
                 exec('git pull', (err, stdout, stderr) => {
                     if (err) return reply(` Gagal Update:\n${err}`)
                     if (stdout) reply(` *Output Git:*\n${stdout}\n\n_Silakan ketik .restart untuk menerapkan update._`)
                 })
             }
 
-            // =======================================================
-            //             FITUR DOWNLOADER (VPS YT-DLP)
-            // =======================================================
+            // --- FITUR DOWNLOADER ---
             if (['tt', 'tiktok', 'ig', 'instagram', 'yt', 'youtube', 'x', 'twitter'].includes(command)) {
                 if (!text) return reply(`❌ Masukkan Link!`)
                 await sock.sendMessage(m.key.remoteJid, { react: { text: '⬇️', key: m.key } })
@@ -333,10 +306,6 @@ async function startBot() {
                     if (filePath && fs.existsSync(filePath)) fs.unlinkSync(filePath)
                 }
             }
-
-            // =======================================================
-            //                FITUR EDITOR & UTILITY
-            // =======================================================
 
             // --- MEME MAKER (.mmf) ---
             if (command === 'mmf') {
@@ -372,8 +341,10 @@ async function startBot() {
                     let media = null
                     if (type === 'imageMessage' || type === 'videoMessage') media = m.message
                     else if (m.quoted && (m.quoted.type === 'imageMessage' || m.quoted.type === 'videoMessage')) media = m.quoted.msg
+                    
                     if (media) {
                         const buffer = await downloadMedia(media)
+                        // Perbaikan Deteksi Video: Menggunakan mimetype dari objek media
                         const isVideo = (media.mimetype || '').includes('video') || (media.mimetype || '').includes('gif')
                         const stickerBuffer = await bufferToSticker(buffer, isVideo);
                         await sock.sendMessage(m.key.remoteJid, { sticker: stickerBuffer }, { quoted: m })
@@ -382,15 +353,23 @@ async function startBot() {
                 } catch (e) { console.log(e); reply("Gagal.") }
             }
             
-            // --- AI & MARKET ---
+            // --- AI ---
             if (command === 'ai') {
                 if(!text) return reply("Tanya apa?")
                 try { const { data } = await axios.get(`https://widipe.com/openai?text=${encodeURIComponent(text)}`); if(data.result) reply(data.result); } catch(e) { reply("AI sibuk.") }
             }
-             if (command === 'price') {
+
+            // --- PRICE (CRYPTO) ---
+            if (command === 'price') {
                 if (!text) return reply("Simbol? (cth: BTC)")
                 const symbol = text.toUpperCase().trim() + "USDT"
-                try { const { data } = await axios.get(`https://api.binance.com/api/v3/ticker/price?symbol=${symbol}`); const price = parseFloat(data.price).toLocaleString('en-US', { style: 'currency', currency: 'USD' }); reply(`💰 *${text.toUpperCase()}*: ${price}`); } catch (e) { reply("Koin salah.") }
+                try { 
+                    const { data } = await axios.get(`https://api.binance.com/api/v3/ticker/price?symbol=${symbol}`); 
+                    const price = parseFloat(data.price).toLocaleString('en-US', { style: 'currency', currency: 'USD' }); 
+                    reply(`💰 *${text.toUpperCase()}*: ${price}`); 
+                } catch (e) { 
+                    reply("Koin tidak ditemukan atau salah simbol.") 
+                }
             }
 
         } catch (err) { console.log("Error Handler:", err) }
